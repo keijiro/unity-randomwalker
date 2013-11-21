@@ -8,16 +8,14 @@ public class RandomWalker : MonoBehaviour
     public int trial = 20;
     public Vector3 prevMove;
     public float inertia = 0.1f;
+	public float thresh = 0.3f;
     WebCamHandler webcam;
 
-	AudioBridge bridge;
 	Vector3 lastPoint;
     Mesh mesh;
 
     void Start ()
     {
-		bridge = FindObjectOfType (typeof(AudioBridge)) as AudioBridge;
-
         webcam = FindObjectOfType (typeof(WebCamHandler)) as WebCamHandler;
 
         mesh = new Mesh ();
@@ -39,7 +37,6 @@ public class RandomWalker : MonoBehaviour
     {
         if (!webcam.Ready) return;
 
-		stride = 0.52f - 0.5f * Mathf.Clamp01(3.5f + bridge.Levels[2] / 20.0f);
 
         var vertices = new Vector3[length];
 		var position = lastPoint;
@@ -51,22 +48,19 @@ public class RandomWalker : MonoBehaviour
             
             for (var i = 0; i < trial; i++)
             {
-                var delta = new Vector3(
-                    Random.Range (-stride, stride),
-                    Random.Range (-stride, stride),
-                    0.0f
-                    );
+				Vector3 delta = Random.insideUnitCircle * stride;
+				delta += prevMove * stride * inertia;
                 var newPosition = position + delta;
                 var level = webcam.GetLevel(newPosition);
                 if (level == 0.0f) continue;
-                
-                level += Vector3.Dot(prevMove, delta.normalized) * inertia;
                 
                 if (level > max)
                 {
                     move = delta;
                     max = level;
                 }
+
+				if (max > thresh) break;
             }
             position += move;
             prevMove = move.normalized;
